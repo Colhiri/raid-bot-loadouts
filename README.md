@@ -1,6 +1,6 @@
-# Raid Bot Loadouts
+# Fast Bot Loadouts
 
-Configure the AI loadouts for Scavs, PMCs, and bosses from the pre-raid screen in SPT 4.1.6. Choose a weapon category and an armor protection class, or pick individual models. The optional ushanka setting replaces AI headwear.
+A lightweight way to change weapons and armor for Scavs, PMCs, and bosses before a raid in SPT 4.1.6. Press **F10**, pick the gear for each group, and save. For a shotgun raid, pick **Shotguns** and an armor class for all three groups.
 
 [Инструкция на русском](README.ru.md) · [Downloads](https://github.com/Colhiri/raid-bot-loadouts/releases/latest)
 
