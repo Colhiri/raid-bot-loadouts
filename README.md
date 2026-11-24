@@ -4,6 +4,12 @@ A lightweight way to change weapons and armor for Scavs, PMCs, and bosses before
 
 [Инструкция на русском](README.ru.md) · [Downloads](https://github.com/Colhiri/raid-bot-loadouts/releases/latest)
 
+## Screenshots
+
+![The F10 menu with loadout choices for Scavs, PMCs, and bosses](docs/screenshots/pre-raid-menu.jpg)
+
+[Weapon categories](docs/screenshots/weapon-categories.jpg) · [Armor classes](docs/screenshots/armor-classes.jpg) · [Scrollable model list](docs/screenshots/model-list.jpg)
+
 ## Install
 
 1. Close the game and the SPT server.

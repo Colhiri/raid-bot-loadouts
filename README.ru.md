@@ -15,6 +15,12 @@
 
 Переключатели включены по умолчанию. Нажмите **«Сохранить»** перед рейдом. Настройки хранятся отдельно для каждого профиля.
 
+## Скриншоты
+
+![Меню F10 с настройками экипировки Диких, ЧВК и боссов](docs/screenshots/pre-raid-menu.jpg)
+
+[Категории оружия](docs/screenshots/weapon-categories.jpg) · [Классы брони](docs/screenshots/armor-classes.jpg) · [Прокрутка списка моделей](docs/screenshots/model-list.jpg)
+
 ## Установка
 
 Распакуйте архив в папку с `EscapeFromTarkov.exe`, объединив `BepInEx` и `SPT_Runtime`. Запустите сервер и игру. Клавиша настраивается в **F12 → Raid Bot Loadouts → Open loadout editor**.
