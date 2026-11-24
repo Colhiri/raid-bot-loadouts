@@ -8,7 +8,7 @@ using SPTarkov.Server.Core.Services.Locales;
 namespace RaidBotLoadouts;
 
 internal sealed record GearEntry(MongoId Id, EquipmentSlots Slot, BotTypeInventory Source);
-internal sealed record ArmorVariant(GearEntry Entry, string? PlateSlot, MongoId[] Plates);
+internal sealed record ArmorSelection(GearEntry Entry, int? Grade);
 
 internal sealed class GearCatalog
 {
@@ -31,7 +31,7 @@ internal sealed class GearCatalog
     internal Dictionary<string, GearEntry> WeaponById { get; } = new(StringComparer.OrdinalIgnoreCase);
     internal Dictionary<string, GearEntry> ArmorById { get; } = new(StringComparer.OrdinalIgnoreCase);
     internal Dictionary<string, GearEntry[]> WeaponsByCategory { get; } = new(StringComparer.OrdinalIgnoreCase);
-    internal Dictionary<int, ArmorVariant[]> ArmorByClass { get; }
+    internal Dictionary<int, GearEntry[]> ArmorByClass { get; }
     internal GearChoice[] Weapons { get; }
     internal GearChoice[] Armor { get; }
     internal GearChoice[] WeaponCategories { get; }
@@ -61,32 +61,23 @@ internal sealed class GearCatalog
 
         WeaponCategories = Categories.Where(category => WeaponsByCategory.ContainsKey(category.Id.ToString()))
             .Select(category => new GearChoice { Id = category.Id.ToString(), Name = category.Label }).ToArray();
-        ArmorByClass = ArmorById.Values.SelectMany(ArmorVariants)
+        ArmorByClass = ArmorById.Values.SelectMany(entry => ArmorGrades(entry).Select(grade => (Grade: grade, Entry: entry)))
             .GroupBy(variant => variant.Grade)
-            .ToDictionary(group => group.Key, group => group.Select(variant => variant.Variant).ToArray());
+            .ToDictionary(group => group.Key, group => group.Select(variant => variant.Entry).ToArray());
         Weapons = Choices(WeaponById);
         Armor = Choices(ArmorById);
 
-        IEnumerable<(int Grade, ArmorVariant Variant)> ArmorVariants(GearEntry entry)
+        IEnumerable<int> ArmorGrades(GearEntry entry)
         {
             var properties = templates.Items[entry.Id].Properties;
             var frontSlot = properties?.Slots?.FirstOrDefault(slot => IsFrontPlate(slot.Name));
-            if (frontSlot?.Name is { } slotName)
+            if (frontSlot is not null)
             {
-                var plates = frontSlot.Properties?.Filters?.SelectMany(filter => filter.Filter ?? []) ?? [];
-                foreach (var group in plates.Distinct().Where(id => Grade(id, templates) is > 0)
-                    .GroupBy(id => Grade(id, templates)))
-                {
-                    yield return (group.Key, new ArmorVariant(entry, slotName, group.ToArray()));
-                }
-                yield break;
+                return CompatiblePlates(frontSlot, templates).Select(id => Grade(id, templates)).Distinct();
             }
 
             var grade = BuiltInGrade(entry.Id, templates);
-            if (grade > 0)
-            {
-                yield return (grade, new ArmorVariant(entry, null, []));
-            }
+            return grade > 0 ? [grade] : [];
         }
 
         void AddSlot(Dictionary<string, GearEntry> catalog, BotTypeInventory source, EquipmentSlots slot, Func<MongoId, bool> include)
@@ -122,6 +113,11 @@ internal sealed class GearCatalog
     }
 
     internal static bool IsFrontPlate(string? slot) => string.Equals(slot, "front_plate", StringComparison.OrdinalIgnoreCase);
+    internal static bool IsBackPlate(string? slot) => string.Equals(slot, "back_plate", StringComparison.OrdinalIgnoreCase);
+
+    internal static MongoId[] CompatiblePlates(Slot slot, TemplateTable templates) =>
+        (slot.Properties?.Filters ?? []).SelectMany(filter => filter.Filter ?? [])
+            .Where(id => Grade(id, templates) > 0).Distinct().ToArray();
 
     internal static int Grade(MongoId id, TemplateTable templates) =>
         templates.Items.GetValueOrDefault(id)?.Properties?.ArmorClass ?? 0;

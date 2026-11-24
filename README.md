@@ -30,9 +30,11 @@ Press **F10** or click **Экипировка ботов** (Bot Loadouts). The i
 | Только выбранное оружие и броня в рейде | Restrict raid equipment and loot to the combined selection |
 | По умолчанию / Сохранить | Default / Save |
 
-Select a category or protection class to get a random matching model. For armor with removable plates, the front plate determines its class. The model list scrolls and accepts Russian and English search terms.
+Select a category or protection class to get a random matching model. Selected armor gets front and back plates wherever the model supports them. The front plate determines its class. The back uses the same class when compatible. The model list scrolls and accepts Russian and English search terms.
 
 With the filter enabled, ground loot, containers, airdrops and bot inventories use the combined gear selection across the three groups. Unconfigured bots can draw from that selection. An equipment type with no selections uses standard generation. Mounted weapons and quest items are exempt. SPT handles the bot spawns.
+
+To restore the default gear and loot for the next raid, set both fields to **По умолчанию** (Default) for every group, turn off ushankas and the raid filter, and save. With the filter on, a default field can inherit the gear selected for another group.
 
 Select **Сохранить** (Save) before starting the raid. Settings are per profile. The client exchanges settings and catalog data with your SPT server. The mod has no external service or telemetry.
 

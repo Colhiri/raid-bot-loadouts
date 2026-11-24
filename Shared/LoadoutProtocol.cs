@@ -3,7 +3,7 @@ namespace RaidBotLoadouts;
 internal static class LoadoutProtocol
 {
     internal const string ModId = "com.colhirux.raidbotloadouts";
-    internal const string Version = "1.1.0";
+    internal const string Version = "1.1.1";
     internal const string Editor = "/raid-bot-loadouts/editor";
     internal const string Save = "/raid-bot-loadouts/save";
 }

@@ -189,8 +189,9 @@ public sealed class LoadoutPlugin : BaseUnityPlugin
             DrawRole("ЧВК", settings.Pmcs);
             DrawRole("Боссы", settings.Bosses);
             GUILayout.Space(5);
-            settings.Ushankas = GUILayout.Toggle(settings.Ushankas, "Ушанки у всех ботов");
-            settings.FilterRaidLoot = GUILayout.Toggle(settings.FilterRaidLoot, "Только выбранное оружие и броня в рейде");
+            settings.Ushankas = GUILayout.Toggle(settings.Ushankas, $"Ушанки у всех ботов · {(settings.Ushankas ? "ВКЛ" : "ВЫКЛ")}");
+            settings.FilterRaidLoot = GUILayout.Toggle(settings.FilterRaidLoot,
+                $"Только выбранное оружие и броня в рейде · {(settings.FilterRaidLoot ? "ВКЛ" : "ВЫКЛ")}");
             GUILayout.Label("С фильтром пустые поля используют выбор других групп.");
             if (selectedRole is not null)
             {

@@ -17,7 +17,7 @@ using Path = System.IO.Path;
 
 namespace RaidBotLoadouts;
 
-internal sealed record BotLoadout(LoadoutSettings Settings, ArmorVariant? Armor);
+internal sealed record BotLoadout(LoadoutSettings Settings, ArmorSelection? Armor);
 
 [Injectable(InjectionType.Singleton)]
 public sealed class LoadoutService(
@@ -154,15 +154,15 @@ public sealed class LoadoutService(
         return role.Weapon is { } id ? catalog.Value.WeaponById.GetValueOrDefault(id) : null;
     }
 
-    private ArmorVariant? SelectArmor(RoleLoadout role)
+    private ArmorSelection? SelectArmor(RoleLoadout role)
     {
         if (role.ArmorClass is { } grade && catalog.Value.ArmorByClass.TryGetValue(grade, out var armor))
         {
-            return armor[Random.Shared.Next(armor.Length)];
+            return new ArmorSelection(armor[Random.Shared.Next(armor.Length)], grade);
         }
 
         return role.Armor is { } id && catalog.Value.ArmorById.TryGetValue(id, out var entry)
-            ? new ArmorVariant(entry, null, []) : null;
+            ? new ArmorSelection(entry, null) : null;
     }
 
     internal void FinishBot(BotBaseInventory inventory, BotLoadout loadout)
@@ -175,34 +175,22 @@ public sealed class LoadoutService(
         var equipment = equipmentId.ToString();
         var equipped = gear.Where(item => item.ParentId == equipment).ToArray();
         var armor = loadout.Armor;
-        if (armor?.PlateSlot is { } plateSlot &&
+        if (armor is not null &&
             equipped.FirstOrDefault(item => item.Template == armor.Entry.Id && item.SlotId == armor.Entry.Slot.ToString()) is { } vest)
         {
-            var plate = gear.FirstOrDefault(item => item.ParentId == vest.Id.ToString() && GearCatalog.IsFrontPlate(item.SlotId));
-            if (plate is null || !armor.Plates.Contains(plate.Template))
-            {
-                var replacement = armor.Plates[Random.Shared.Next(armor.Plates.Length)];
-                var durability = templates.Items[replacement].Properties?.MaxDurability;
-                if (plate is null)
-                {
-                    plate = new Item { Id = new MongoId(), ParentId = vest.Id.ToString(), SlotId = plateSlot };
-                    gear.Add(plate);
-                }
-
-                plate.Template = replacement;
-                plate.Upd = new Upd { Repairable = new UpdRepairable { Durability = durability, MaxDurability = durability } };
-            }
+            FitArmorPlates(gear, vest, armor.Grade);
         }
 
         if (loadout.Settings.Ushankas && templates.Items.TryGetValue(ItemTpl.HEADWEAR_USHANKA_EAR_FLAP_HAT, out var hat))
         {
+            var wornHat = equipped.FirstOrDefault(item => item.SlotId == nameof(EquipmentSlots.Headwear) && item.Template == hat.Id);
             var conflicts = hat.Properties?.ConflictingItems;
-            var remove = equipped.Where(item => (item.SlotId == nameof(EquipmentSlots.Headwear)
-                && item.Template != ItemTpl.HEADWEAR_USHANKA_EAR_FLAP_HAT)
+            var remove = equipped.Where(item => item.Id != wornHat?.Id &&
+                (item.SlotId == nameof(EquipmentSlots.Headwear)
                 || conflicts?.Contains(item.Template) == true
-                || templates.Items.GetValueOrDefault(item.Template)?.Properties?.ConflictingItems?.Contains(hat.Id) == true);
+                || templates.Items.GetValueOrDefault(item.Template)?.Properties?.ConflictingItems?.Contains(hat.Id) == true));
             RaidLootFilter.RemoveBranches(gear, remove.Select(item => item.Id));
-            if (!equipped.Any(item => item.SlotId == nameof(EquipmentSlots.Headwear) && item.Template == hat.Id))
+            if (wornHat is null)
             {
                 gear.Add(new Item { Id = new MongoId(), Template = hat.Id, ParentId = equipment, SlotId = nameof(EquipmentSlots.Headwear) });
             }
@@ -210,7 +198,61 @@ public sealed class LoadoutService(
 
         var filter = GetLootFilter(loadout.Settings);
         filter.Filter(gear, keep: item => item.ParentId == equipment
-            && item.SlotId is not nameof(EquipmentSlots.Headwear) and not nameof(EquipmentSlots.FaceCover));
+            && (item.SlotId is not nameof(EquipmentSlots.Headwear) and not nameof(EquipmentSlots.FaceCover)
+                || (loadout.Settings.Ushankas && item.Template == ItemTpl.HEADWEAR_USHANKA_EAR_FLAP_HAT)));
+    }
+
+    private void FitArmorPlates(List<Item> gear, Item armor, int? grade)
+    {
+        var slots = templates.Items[armor.Template].Properties?.Slots;
+        if (slots is null)
+        {
+            return;
+        }
+
+        var armorId = armor.Id.ToString();
+        var front = slots.FirstOrDefault(slot => GearCatalog.IsFrontPlate(slot.Name));
+        var back = slots.FirstOrDefault(slot => GearCatalog.IsBackPlate(slot.Name));
+        FitPlate(front);
+        FitPlate(back);
+
+        void FitPlate(Slot? slot)
+        {
+            if (slot?.Name is not { } name)
+            {
+                return;
+            }
+
+            var allowed = GearCatalog.CompatiblePlates(slot, templates);
+            if (allowed.Length == 0)
+            {
+                return;
+            }
+
+            var installed = gear.FirstOrDefault(item => item.ParentId == armorId
+                && string.Equals(item.SlotId, name, StringComparison.OrdinalIgnoreCase));
+            var matching = grade is { } requested
+                ? allowed.Where(id => GearCatalog.Grade(id, templates) == requested).ToArray()
+                : allowed;
+            var pool = matching.Length > 0 ? matching : allowed;
+            if (installed is not null && pool.Contains(installed.Template))
+            {
+                return;
+            }
+
+            var defaultPlate = slot.Properties?.Filters?.FirstOrDefault()?.Plate;
+            var chosen = defaultPlate is { } fallback && pool.Contains(fallback)
+                ? fallback : pool[Random.Shared.Next(pool.Length)];
+            var durability = templates.Items[chosen].Properties?.MaxDurability;
+            if (installed is null)
+            {
+                installed = new Item { Id = new MongoId(), ParentId = armorId, SlotId = name };
+                gear.Add(installed);
+            }
+
+            installed.Template = chosen;
+            installed.Upd = new Upd { Repairable = new UpdRepairable { Durability = durability, MaxDurability = durability } };
+        }
     }
 
     internal RaidLootFilter GetLootFilter(MongoId sessionId) => GetLootFilter(settings.GetOrAdd(sessionId, ReadSettings));
